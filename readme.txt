@@ -1,5 +1,3 @@
-# wsi_user_logs
-
 === User Logs ===
 Contributors: vikas4travel
 Tags: User Logs, Unit Converter, Weight metric to imperial
