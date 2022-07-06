@@ -166,7 +166,7 @@ class WSI_User_Logs {
 			if ( ! get_option( 'wsi_user_logs_welcome' ) ) {
 				?>
 				<div class="notice notice-success is-dismissible">
-					<p><?php echo __( 'Thank you for installing User Logs.', 'wsi_user_logs' ) ?></p>
+						<p><?php echo __( 'Thank you for installing User Logs.', 'wsi_user_logs' ) ?></p>
 				</div>
 				<?php
 				update_option( 'wsi_user_logs_welcome', 1 );
@@ -180,22 +180,24 @@ class WSI_User_Logs {
 	public function login_logs(){
 		global $wpdb;
 
+		if ( ! empty( $_GET['delete_user_id'] ) ) {
+			$this->delete_login_logs( $_GET['delete_user_id'] );
+		}
+
 		$current_page = ! empty( $_GET['current_page'] ) ? intval( $_GET['current_page'] ) : 1;
 		$search_logs  = ! empty( $_GET['search_logs'] ) ? sanitize_text_field( $_GET['search_logs'] ) : '';
 
-		$where = ' WHERE 1=1 ';
-		$args  = [];
+		// Setting a default argument for $wpdb->prepare();
+		$where = ' WHERE 1=%s ';
+		$args  = [1];
+
 		if ( $search_logs ) {
 			$where .= " AND login_user_id LIKE '%%%s%%'";
 			$args[] = sanitize_text_field( $search_logs );
 		}
 
 		// Get rows.
-		if ( empty( $args ) ) {
-			$results = $wpdb->get_row( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs" );
-		} else {
-			$results = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs {$where}", $args ) );
-		}
+		$results = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs {$where}", $args ) );
 
 		$total_rows = ! empty( $results->total ) ? $results->total : 0;
 
@@ -207,22 +209,16 @@ class WSI_User_Logs {
 		$args[] = $offset;
 		$args[] = $limit;
 
-		if ( empty( $args ) ) {
-			$logs = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id DESC LIMIT %d, %d" );
-		} else {
-			$logs = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}user_login_logs {$where} ORDER BY login_log_id DESC LIMIT %d, %d", $args ) );
-		}
+		$sql = "SELECT logs.*, users.ID, users.user_login, users.display_name  
+				FROM {$wpdb->prefix}user_login_logs AS logs
+				LEFT JOIN {$wpdb->prefix}users AS users 
+				ON ( logs.login_user_id = users.ID )
+				{$where}
+				ORDER BY login_log_id DESC 
+				LIMIT %d, %d";
 
-		$args = [
-			'logs'         => $logs,
-			'total_rows'   => $total_rows,
-			'num_of_pages' => $num_of_pages,
-			'current_page' => $current_page,
-			'search_logs'  => $search_logs,
-		];
+		$logs = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
 
-
-		// Display the plugin page
 		include_once( __DIR__ . '/templates/login-logs.php' );
 	}
 
@@ -258,9 +254,10 @@ class WSI_User_Logs {
 		$ip = self::get_user_ip();
 
 		$sql = "INSERT INTO $table_name 
-				SET login_user_id = %d,
-				login_user_ip     = %s,
-				login_date        = %s";
+				SET login_user_id  = %d,
+				login_user_ip      = %s,
+				login_request_type = 1,
+				login_date         = %s";
 
 		$wpdb->query( $wpdb->prepare( $sql, [ $user->ID , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
 	}
@@ -273,9 +270,10 @@ class WSI_User_Logs {
 		$ip = self::get_user_ip();
 
 		$sql = "INSERT INTO $table_name 
-				SET login_user_id = %d,
-				login_user_ip     = %s,
-				login_date        = %s";
+				SET login_user_id  = %d,
+				login_user_ip      = %s,
+				login_request_type = 2,
+				login_date         = %s";
 
 		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
 	}
@@ -296,6 +294,22 @@ class WSI_User_Logs {
 		}
 
 		return $user_ip;
+	}
+
+	/**
+	 * Delete login logs
+	 * @param $log_id
+	 */
+	public function delete_login_logs( $log_id ) {
+		global $wpdb;
+
+		if ( empty( $log_id ) ) {
+			return;
+		}
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}user_login_logs WHERE login_log_id = %d", $log_id ) );
+
+		echo '<div class="notice notice-success is-dismissible"><p>Record deleted successfully!</p></div>';
 	}
 
 }
