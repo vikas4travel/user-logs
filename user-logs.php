@@ -57,6 +57,7 @@ class WSI_User_Logs {
 
 		// Add Hooks
 		add_filter( 'wp_login', [ $this, 'login_filter' ], 10, 2 );
+		add_filter( 'wp_logout', [ $this, 'logout_filter' ], 10, 1 );
 	}
 
 	/**
@@ -88,14 +89,17 @@ class WSI_User_Logs {
 				) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
 
 		$wpdb->query( $wpdb->prepare( $sql ) );
-
 	}
 
 	/**
 	 * Deactivate the plugin
 	 */
 	public function plugin_deactivation() {
+		global $wpdb;
+
 		delete_option( 'wsi_user_logs_welcome' );
+		$wpdb->query( "DROP TABLE `{$wpdb->prefix}user_login_logs`" );
+		$wpdb->query( "DROP TABLE `{$wpdb->prefix}user_registration_logs`" );
 	}
 
 	public function do_activation_redirect() {
@@ -121,10 +125,10 @@ class WSI_User_Logs {
 	 */
 	public function create_admin_menu() {
 		add_menu_page( 'User Logs', 'User Logs', 'edit_posts', 'wsi-user-logs', '', 'dashicons-groups', 100 );
-		add_submenu_page( 'wsi-user-logs', 'User Login Logs', 'User Login Logs', 'manage_options', self::$plugin_slug, [ $this, 'login_stats' ] );
-		add_submenu_page( 'wsi-user-logs', 'Registration Logs', 'Registration Logs', 'manage_options', self::$plugin_slug, [ $this, 'registration_stats' ] );
-		add_submenu_page( 'wsi-user-logs', 'Activity Logs', 'Activity Logs', 'manage_options', self::$plugin_slug, [ $this, 'registration_stats' ] );
-		add_submenu_page( 'wsi-user-logs', 'Settings', 'Settings', 'manage_options', self::$plugin_slug, [ $this, 'registration_stats' ] );
+		add_submenu_page( 'wsi-user-logs', 'User Login Logs', 'User Login Logs', 'manage_options', self::$plugin_slug, [ $this, 'login_logs' ] );
+		add_submenu_page( 'wsi-user-logs', 'Registration Logs', 'Registration Logs', 'manage_options', self::$plugin_slug, [ $this, 'registration_logs' ] );
+		add_submenu_page( 'wsi-user-logs', 'Activity Logs', 'Activity Logs', 'manage_options', self::$plugin_slug, [ $this, 'login_logs' ] );
+		add_submenu_page( 'wsi-user-logs', 'Settings', 'Settings', 'manage_options', self::$plugin_slug, [ $this, 'registration_logs' ] );
 		remove_submenu_page( 'wsi-user-logs', 'wsi-user-logs' );
 	}
 
@@ -173,23 +177,64 @@ class WSI_User_Logs {
 	/**
 	 * Plugin page in the admin area.
 	 */
-	public function login_stats(){
-		$current_page = ! empty( $POST['current-page'] ) ? intval( $POST['current-page'] ) : 1;
+	public function login_logs(){
+		global $wpdb;
+
+		$current_page = ! empty( $_GET['current_page'] ) ? intval( $_GET['current_page'] ) : 1;
+		$search_logs  = ! empty( $_GET['search_logs'] ) ? sanitize_text_field( $_GET['search_logs'] ) : '';
+
+		$where = ' WHERE 1=1 ';
+		$args  = [];
+		if ( $search_logs ) {
+			$where .= " AND login_user_id LIKE '%%%s%%'";
+			$args[] = sanitize_text_field( $search_logs );
+		}
+
+		// Get rows.
+		if ( empty( $args ) ) {
+			$results = $wpdb->get_row( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs" );
+		} else {
+			$results = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs {$where}", $args ) );
+		}
+
+		$total_rows = ! empty( $results->total ) ? $results->total : 0;
+
+		// Pagination Variables.
+		$limit        = 50; // Number of rows to show in page.
+		$offset       = ( $current_page - 1 ) * $limit;
+		$num_of_pages = ceil( $total_rows / $limit );
+
+		$args[] = $offset;
+		$args[] = $limit;
+
+		if ( empty( $args ) ) {
+			$logs = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id DESC LIMIT %d, %d" );
+		} else {
+			$logs = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}user_login_logs {$where} ORDER BY login_log_id DESC LIMIT %d, %d", $args ) );
+		}
+
+		$args = [
+			'logs'         => $logs,
+			'total_rows'   => $total_rows,
+			'num_of_pages' => $num_of_pages,
+			'current_page' => $current_page,
+			'search_logs'  => $search_logs,
+		];
 
 
 		// Display the plugin page
-		include_once( __DIR__ . '/templates/login-stats.php' );
+		include_once( __DIR__ . '/templates/login-logs.php' );
 	}
 
 	/**
 	 * Plugin page in the admin area.
 	 */
-	public function registration_stats(){
+	public function registration_logs(){
 
 		$current_page = ! empty( $POST['current-page'] ) ? intval( $POST['current-page'] ) : 1;
 
 		// Display the plugin page
-		include_once( __DIR__ . '/templates/registration-stats.php' );
+		include_once( __DIR__ . '/templates/registration-logs.php' );
 	}
 
 	/**
@@ -219,6 +264,22 @@ class WSI_User_Logs {
 
 		$wpdb->query( $wpdb->prepare( $sql, [ $user->ID , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
 	}
+
+	public function logout_filter( $user_id ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . "user_login_logs";
+
+		$ip = self::get_user_ip();
+
+		$sql = "INSERT INTO $table_name 
+				SET login_user_id = %d,
+				login_user_ip     = %s,
+				login_date        = %s";
+
+		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
+	}
+
 
 	/**
 	 * Get user' IP
