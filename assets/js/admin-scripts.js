@@ -10,4 +10,7 @@
 		$("#wsi_search_to_date").val('');
 	})
 
+	$("#wsi_search_from_date").datepicker();
+	$("#wsi_search_to_date").datepicker();
+
 })( jQuery );

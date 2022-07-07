@@ -152,7 +152,9 @@ class WSI_User_Logs {
 		// Enqueue these scripts only if we are on the plugin settings page.
 		if ( self::is_plugin_page() ) {
 			wp_enqueue_style('wsi_user_logs_admin_style', plugin_dir_url(__FILE__) . '/assets/css/admin-styles.css');
-			wp_enqueue_script( 'wsi_user_logs_admin_script', plugin_dir_url(__FILE__) . '/assets/js/admin-scripts.js', ['jquery'], '1.0.0', true );
+			wp_enqueue_script( 'wsi_user_logs_admin_script', plugin_dir_url(__FILE__) . '/assets/js/admin-scripts.js', ['jquery', 'jquery-ui-datepicker'], '1.0.0', true );
+			wp_register_style( 'jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css' );
+			wp_enqueue_style( 'jquery-ui' );
 		}
 	}
 
@@ -223,8 +225,9 @@ class WSI_User_Logs {
 		}
 
 		if ( ! empty( $search_from_date ) ) {
+
 			$where .= " AND DATE(login_date) >= %s";
-			$args[] = sanitize_text_field( $search_from_date );
+			$args[] = sanitize_text_field( gmdate( 'Y-m-d', strtotime( $search_from_date ) ) );
 		} else {
 			// get first log date.
 			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id ASC LIMIT 0,1" );
@@ -233,7 +236,7 @@ class WSI_User_Logs {
 
 		if ( ! empty( $search_to_date ) ) {
 			$where .= " AND DATE(login_date) <= %s";
-			$args[] = sanitize_text_field( $search_to_date );
+			$args[] = sanitize_text_field( gmdate( 'Y-m-d', strtotime( $search_to_date ) ) );
 		} else {
 			// get last log date.
 			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id DESC LIMIT 0,1" );
@@ -389,6 +392,25 @@ class WSI_User_Logs {
 
 			$wpdb->query( $wpdb->prepare( $sql, [ $random_id , $random_ip, $login_request, $random_date ] ) );
 		}
+	}
+
+	public static function print_column( $label, $column ) {
+		$order_by = ! empty( $_GET['wsi_order_by'] ) ? sanitize_text_field( $_GET['wsi_order_by'] ) : '';
+		$order    = ( ! empty( $_GET['wsi_order'] ) && 'asc' === $_GET['wsi_order'] ) ? 'desc' : 'asc';
+
+		if ( ! empty( $order_by ) ) {
+		}
+
+		//echo "<pre>";print_r( $current_url );echo "</pre>";exit;
+
+		$html = "<th class='manage-column column-title sortable %s'>
+					<a href='#'>
+						<span>%s</span>
+						<span class='sorting-indicator'></span>
+					</a>
+				</th>";
+
+		return sprintf( $html, [ $order, $label ] );
 	}
 }
 

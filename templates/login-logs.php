@@ -95,18 +95,64 @@ $search_to_date      = ! empty( $search_to_date ) ? $search_to_date : '';
 		</div>
 	</div>
 
+	<?php
+	$sort_by    = 'display_name';
+	$sort_order = 'desc';
+	?>
 
 	<table class="wp-list-table widefat striped table-view-list posts">
 		<thead>
 		<tr>
-			<td class="manage-column column-title">User ID</td>
-			<td class="manage-column column-title">Username (Login Name)</td>
-			<td class="manage-column column-title">Display Name</td>
-			<td class="manage-column column-title">Email</td>
-			<td class="manage-column column-title">IP Address</td>
-			<td class="manage-column column-title">Request Type</td>
-			<td class="manage-column column-title">Login Date</td>
-			<td class="manage-column column-title">Delete Logs</td>
+			<?php
+				echo self::print_column('User ID', 'login_user_id');
+			?>
+			<th class="manage-column column-title sortable desc">
+				<a href="#">
+					<span>User ID</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>Username (Login Name)</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>Display Name</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>Email</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>IP Address</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>Request Type</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+			<th class="manage-column column-title sortable">
+				<a href="#">
+					<span>Login Date</span>
+					<span class="sorting-indicator"></span>
+				</a>
+			</th>
+			<th class="manage-column column-title">
+				Delete Logs
+			</th>
 		</tr>
 		</thead>
 		<tbody>
