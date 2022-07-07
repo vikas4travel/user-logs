@@ -1,0 +1,24 @@
+#wsi_search_form .wsi_input {
+	width: 140px;
+	margin-bottom: 5px;
+	font-size: 12px;
+	min-height: 25px;
+	height: 30px;
+}
+#wsi-clear-button, #wsi-submit-button {
+	font-size: 12px;
+	min-height: 25px;
+	height: 30px;
+	line-height: 28px;
+}
+
+#wsi_pagination span {
+	padding: 5px;
+	font-size: 14px;
+}
+
+@media screen and (max-width: 782px) {
+	#wsi_pagination .pagination-links {
+		margin-top: 10px;
+	}
+}

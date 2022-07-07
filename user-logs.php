@@ -98,8 +98,8 @@ class WSI_User_Logs {
 		global $wpdb;
 
 		delete_option( 'wsi_user_logs_welcome' );
-		$wpdb->query( "DROP TABLE `{$wpdb->prefix}user_login_logs`" );
-		$wpdb->query( "DROP TABLE `{$wpdb->prefix}user_registration_logs`" );
+		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_login_logs`" );
+		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_registration_logs`" );
 	}
 
 	public function do_activation_redirect() {
@@ -184,20 +184,70 @@ class WSI_User_Logs {
 			$this->delete_login_logs( $_GET['delete_user_id'] );
 		}
 
-		$current_page = ! empty( $_GET['current_page'] ) ? intval( $_GET['current_page'] ) : 1;
-		$search_logs  = ! empty( $_GET['search_logs'] ) ? sanitize_text_field( $_GET['search_logs'] ) : '';
+		$current_page        = ! empty( $_GET['wsi_current_page'] ) ? intval( $_GET['wsi_current_page'] ) : 1;
+		$search_user_id      = ! empty( $_GET['wsi_search_user_id'] ) ? sanitize_text_field( $_GET['wsi_search_user_id'] ) : '';
+		$search_username     = ! empty( $_GET['wsi_search_username'] ) ? sanitize_text_field( $_GET['wsi_search_username'] ) : '';
+		$search_display_name = ! empty( $_GET['wsi_search_display_name'] ) ? sanitize_text_field( $_GET['wsi_search_display_name'] ) : '';
+		$search_ip_address   = ! empty( $_GET['wsi_search_ip_address'] ) ? sanitize_text_field( $_GET['wsi_search_ip_address'] ) : '';
+		$search_email        = ! empty( $_GET['wsi_search_email'] ) ? sanitize_text_field( $_GET['wsi_search_email'] ) : '';
+		$search_from_date    = ! empty( $_GET['wsi_search_from_date'] ) ? sanitize_text_field( $_GET['wsi_search_from_date'] ) : '';
+		$search_to_date      = ! empty( $_GET['wsi_search_to_date'] ) ? sanitize_text_field( $_GET['wsi_search_to_date'] ) : '';
 
 		// Setting a default argument for $wpdb->prepare();
 		$where = ' WHERE 1=%s ';
 		$args  = [1];
 
-		if ( $search_logs ) {
+		if ( ! empty( $search_user_id ) ) {
 			$where .= " AND login_user_id LIKE '%%%s%%'";
-			$args[] = sanitize_text_field( $search_logs );
+			$args[] = sanitize_text_field( $search_user_id );
+		}
+
+		if ( ! empty( $search_username ) ) {
+			$where .= " AND user_login LIKE '%%%s%%'";
+			$args[] = sanitize_text_field( $search_username );
+		}
+
+		if ( ! empty( $search_display_name ) ) {
+			$where .= " AND display_name LIKE '%%%s%%'";
+			$args[] = sanitize_text_field( $search_display_name );
+		}
+
+		if ( ! empty( $search_ip_address ) ) {
+			$where .= " AND login_user_ip LIKE '%%%s%%'";
+			$args[] = sanitize_text_field( $search_ip_address );
+		}
+
+		if ( ! empty( $search_email ) ) {
+			$where .= " AND user_email LIKE '%%%s%%'";
+			$args[] = sanitize_text_field( $search_email );
+		}
+
+		if ( ! empty( $search_from_date ) ) {
+			$where .= " AND DATE(login_date) >= %s";
+			$args[] = sanitize_text_field( $search_from_date );
+		} else {
+			// get first log date.
+			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id ASC LIMIT 0,1" );
+			$placeholder_from_date = ! empty( $results->login_date ) ? $results->login_date : '';
+		}
+
+		if ( ! empty( $search_to_date ) ) {
+			$where .= " AND DATE(login_date) <= %s";
+			$args[] = sanitize_text_field( $search_to_date );
+		} else {
+			// get last log date.
+			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id DESC LIMIT 0,1" );
+			$placeholder_to_date = ! empty( $results->login_date ) ? $results->login_date : '';
 		}
 
 		// Get rows.
-		$results = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_login_logs {$where}", $args ) );
+		$sql = "SELECT COUNT(*) AS total 
+				FROM {$wpdb->prefix}user_login_logs AS logs
+				LEFT JOIN {$wpdb->prefix}users AS users 
+				ON ( logs.login_user_id = users.ID )
+				{$where}";
+
+		$results = $wpdb->get_row( $wpdb->prepare( $sql, $args ) );
 
 		$total_rows = ! empty( $results->total ) ? $results->total : 0;
 
@@ -209,7 +259,7 @@ class WSI_User_Logs {
 		$args[] = $offset;
 		$args[] = $limit;
 
-		$sql = "SELECT logs.*, users.ID, users.user_login, users.display_name  
+		$sql = "SELECT logs.*, users.ID, users.user_login, users.display_name, users.user_email 
 				FROM {$wpdb->prefix}user_login_logs AS logs
 				LEFT JOIN {$wpdb->prefix}users AS users 
 				ON ( logs.login_user_id = users.ID )
@@ -312,6 +362,34 @@ class WSI_User_Logs {
 		echo '<div class="notice notice-success is-dismissible"><p>Record deleted successfully!</p></div>';
 	}
 
+	/**
+	 * Generate random data for stress testing.
+	 *
+	 * Note: This function is not to be used on production.
+	 */
+	public static function insert_test_data() {
+		global $wpdb;
+
+		$users       = $wpdb->get_results( "SELECT ID FROM {$wpdb->prefix}users" );
+		$user_ids    = wp_list_pluck( $users, 'ID' );
+		$total_users = count( $users );
+
+		for( $i=0; $i < 10000; $i++ ) {
+
+			$random_id     = $user_ids[ rand(0, $total_users) ];
+			$random_ip     = rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255);
+			$random_date   = gmdate( 'Y-m-d H:i:s', strtotime( rand(1, 60 ) . ' days ago' ) );
+			$login_request = rand( 1, 2 );
+
+			$sql = "INSERT INTO {$wpdb->prefix}user_login_logs 
+				SET login_user_id  = %d,
+				login_user_ip      = %s,
+				login_request_type = %d,
+				login_date         = %s";
+
+			$wpdb->query( $wpdb->prepare( $sql, [ $random_id , $random_ip, $login_request, $random_date ] ) );
+		}
+	}
 }
 
 new WSI_User_Logs();
