@@ -10,6 +10,9 @@ $search_ip_address     = ! empty( $search_ip_address ) ? $search_ip_address : ''
 $search_email          = ! empty( $search_email ) ? $search_email : '';
 $search_from_date      = ! empty( $search_from_date ) ? $search_from_date : '';
 $search_to_date        = ! empty( $search_to_date ) ? $search_to_date : '';
+$placeholder_from_date = ! empty( $placeholder_from_date ) ? $placeholder_from_date : '';
+$placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date : '';
+
 ?>
 
 <div class="wrap">

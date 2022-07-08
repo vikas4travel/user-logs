@@ -58,6 +58,8 @@ class WSI_User_Logs {
 		// Add Hooks
 		add_filter( 'wp_login', [ $this, 'login_filter' ], 10, 2 );
 		add_filter( 'wp_logout', [ $this, 'logout_filter' ], 10, 1 );
+
+		//self::insert_test_data();
 	}
 
 	/**
@@ -313,7 +315,7 @@ class WSI_User_Logs {
 
 			// First element of a dataset is date
 			$ticks[]   = "new Date($year, $month, $day)";
-			$dataset[] = array( "new Date($year, $month, $day)", $data->wsi_login_date );
+			$dataset[] = array( "new Date($year, $month, $day)", $data->login_count );
 		}
 
 		$ticks_json  = str_replace( '"', '', wp_json_encode( $ticks ) );
@@ -427,20 +429,27 @@ class WSI_User_Logs {
 		$user_ids    = wp_list_pluck( $users, 'ID' );
 		$total_users = count( $users );
 
-		for( $i=0; $i < 10000; $i++ ) {
+		$no_of_days  = 90;
 
-			$random_id     = $user_ids[ rand(0, $total_users) ];
-			$random_ip     = rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255);
-			$random_date   = gmdate( 'Y-m-d H:i:s', strtotime( rand(1, 60 ) . ' days ago' ) );
-			$login_request = rand( 1, 2 );
+		for( $i = $no_of_days; $i > 0; $i-- ) {
 
-			$sql = "INSERT INTO {$wpdb->prefix}user_login_logs 
+			$user_count_for_the_day = rand( 50, 200 );
+
+			for( $j=0; $j < $user_count_for_the_day; $j++ ) {
+
+				$random_id     = $user_ids[ rand(0, $total_users) ];
+				$random_ip     = rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255);
+				$random_date   = gmdate( 'Y-m-d H:i:s', strtotime( $i . ' days ago' ) );
+				$login_request = rand( 1, 2 );
+
+				$sql = "INSERT INTO {$wpdb->prefix}user_login_logs 
 				SET login_user_id  = %d,
 				login_user_ip      = %s,
 				login_request_type = %d,
 				login_date         = %s";
 
-			$wpdb->query( $wpdb->prepare( $sql, [ $random_id , $random_ip, $login_request, $random_date ] ) );
+				$wpdb->query( $wpdb->prepare( $sql, [ $random_id , $random_ip, $login_request, $random_date ] ) );
+			}
 		}
 	}
 
