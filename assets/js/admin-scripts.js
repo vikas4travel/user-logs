@@ -13,4 +13,12 @@
 	$("#wsi_search_from_date").datepicker();
 	$("#wsi_search_to_date").datepicker();
 
+	$( '.wsi-sort-column' ).on('click', function (e) {
+		$("#wsi_order_by").val( $(this).data('orderby') );
+		$("#wsi_order").val( $(this).data('order') );
+
+		$("#wsi_search_form form").submit();
+	})
+
+
 })( jQuery );

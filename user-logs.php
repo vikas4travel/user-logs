@@ -270,9 +270,59 @@ class WSI_User_Logs {
 				ORDER BY login_log_id DESC 
 				LIMIT %d, %d";
 
-		$logs = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		$logs  = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+
+		// Login Graph Data
+		$graph = self::get_login_graph_data( $where, $args );
 
 		include_once( __DIR__ . '/templates/login-logs.php' );
+	}
+
+	/**
+	 * Get data for login graph.
+	 * @param $where
+	 * @param $args
+	 * @return
+	 */
+	public static function get_login_graph_data( $where, $args ) {
+		global $wpdb;
+
+		$sql = "SELECT COUNT(*) AS login_count, DATE(logs.login_date) AS wsi_login_date 
+				FROM {$wpdb->prefix}user_login_logs AS logs
+				LEFT JOIN {$wpdb->prefix}users AS users 
+				ON ( logs.login_user_id = users.ID )
+				{$where}
+				AND logs.login_request_type = 1
+				GROUP BY wsi_login_date
+				ORDER BY wsi_login_date ASC 
+				LIMIT %d, %d";
+
+		$graph_data = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		if ( empty( $graph_data ) ) {
+			return [];
+		}
+
+		$dataset = array();
+		$ticks   = array();
+
+		foreach ( (array) $graph_data as $data ) {
+			$date  = strtotime( $data->wsi_login_date );
+			$year  = date( 'Y', $date );
+			$month = date( 'm', $date ) - 1;
+			$day   = date( 'd', $date );
+
+			// First element of a dataset is date
+			$ticks[]   = "new Date($year, $month, $day)";
+			$dataset[] = array( "new Date($year, $month, $day)", $data->wsi_login_date );
+		}
+
+		$ticks_json  = str_replace( '"', '', wp_json_encode( $ticks ) );
+		$data_json  = str_replace( '"', '', wp_json_encode( $dataset ) );
+
+		return [
+			'ticks_json' => $ticks_json,
+			'data_json'  => $data_json,
+		];
 	}
 
 	/**
@@ -395,22 +445,16 @@ class WSI_User_Logs {
 	}
 
 	public static function print_column( $label, $column ) {
-		$order_by = ! empty( $_GET['wsi_order_by'] ) ? sanitize_text_field( $_GET['wsi_order_by'] ) : '';
 		$order    = ( ! empty( $_GET['wsi_order'] ) && 'asc' === $_GET['wsi_order'] ) ? 'desc' : 'asc';
 
-		if ( ! empty( $order_by ) ) {
-		}
-
-		//echo "<pre>";print_r( $current_url );echo "</pre>";exit;
-
 		$html = "<th class='manage-column column-title sortable %s'>
-					<a href='#'>
+					<a href='#' class='wsi-sort-column' data-order='%s' data-orderby='%s'>
 						<span>%s</span>
 						<span class='sorting-indicator'></span>
 					</a>
 				</th>";
 
-		return sprintf( $html, [ $order, $label ] );
+		printf( $html, $order, $order, $column, $label );
 	}
 }
 

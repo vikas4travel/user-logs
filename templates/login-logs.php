@@ -1,15 +1,15 @@
 <?php
-$logs                = ! empty( $logs ) ? $logs : [];
-$total_rows          = ! empty( $total_rows ) ? $total_rows : [];
-$num_of_pages        = ! empty( $num_of_pages ) ? $num_of_pages : [];
-$current_page        = ! empty( $current_page ) ? $current_page : [];
-$search_user_id      = ! empty( $search_user_id ) ? $search_user_id : '';
-$search_username     = ! empty( $search_username ) ? $search_username : '';
-$search_display_name = ! empty( $search_display_name ) ? $search_display_name : '';
-$search_ip_address   = ! empty( $search_ip_address ) ? $search_ip_address : '';
-$search_email        = ! empty( $search_email ) ? $search_email : '';
-$search_from_date    = ! empty( $search_from_date ) ? $search_from_date : '';
-$search_to_date      = ! empty( $search_to_date ) ? $search_to_date : '';
+$logs                  = ! empty( $logs ) ? $logs : [];
+$total_rows            = ! empty( $total_rows ) ? $total_rows : [];
+$num_of_pages          = ! empty( $num_of_pages ) ? $num_of_pages : [];
+$current_page          = ! empty( $current_page ) ? $current_page : [];
+$search_user_id        = ! empty( $search_user_id ) ? $search_user_id : '';
+$search_username       = ! empty( $search_username ) ? $search_username : '';
+$search_display_name   = ! empty( $search_display_name ) ? $search_display_name : '';
+$search_ip_address     = ! empty( $search_ip_address ) ? $search_ip_address : '';
+$search_email          = ! empty( $search_email ) ? $search_email : '';
+$search_from_date      = ! empty( $search_from_date ) ? $search_from_date : '';
+$search_to_date        = ! empty( $search_to_date ) ? $search_to_date : '';
 ?>
 
 <div class="wrap">
@@ -23,6 +23,8 @@ $search_to_date      = ! empty( $search_to_date ) ? $search_to_date : '';
 		<div class="alignleft bulkactions" id="wsi_search_form">
 			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
 				<input type="hidden" name="page" value="wsi_user_logs">
+				<input type="hidden" name="wsi_order_by" value="" id="wsi_order_by">
+				<input type="hidden" name="wsi_order" value="" id="wsi_order">
 
 				<input type="text"
 					   name="wsi_search_user_id"
@@ -72,7 +74,13 @@ $search_to_date      = ! empty( $search_to_date ) ? $search_to_date : '';
 
 			</form>
 		</div>
+	</div>
 
+	<?php
+	include_once 'login-graph.php';
+	?>
+
+	<div class="tablenav top">
 		<div class="tablenav-pages" id="wsi_pagination">
 			<div class="pagination-links">
 				<span class="displaying-num">Total <?php echo intval( $total_rows ); ?> items</span>
@@ -104,52 +112,14 @@ $search_to_date      = ! empty( $search_to_date ) ? $search_to_date : '';
 		<thead>
 		<tr>
 			<?php
-				echo self::print_column('User ID', 'login_user_id');
+			self::print_column('User ID', 'login_user_id');
+			self::print_column('Username (Login Name)', 'user_login');
+			self::print_column('Display Name', 'display_name');
+			self::print_column('Email', 'user_email');
+			self::print_column('IP Address', 'login_user_ip');
+			self::print_column('Request Type', 'login_request_type');
+			self::print_column('Login Date', 'login_date');
 			?>
-			<th class="manage-column column-title sortable desc">
-				<a href="#">
-					<span>User ID</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>Username (Login Name)</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>Display Name</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>Email</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>IP Address</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>Request Type</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
-			<th class="manage-column column-title sortable">
-				<a href="#">
-					<span>Login Date</span>
-					<span class="sorting-indicator"></span>
-				</a>
-			</th>
 			<th class="manage-column column-title">
 				Delete Logs
 			</th>
