@@ -25,6 +25,12 @@
 	}
 }
 
+#wsi_pagination span.current span{
+	font-weight: bold;
+	color: #000;
+}
+
+
 #wsi_graph_container {
 	width: 100%;
 	padding: 10px 10px 0 0;

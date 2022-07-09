@@ -247,6 +247,9 @@ class WSI_User_Logs {
 			$placeholder_to_date = ! empty( $results->login_date ) ? $results->login_date : '';
 		}
 
+		// Login Graph Data
+		$graph = self::get_login_graph_data( $where, $args );
+
 		// Get rows.
 		$sql = "SELECT COUNT(*) AS total 
 				FROM {$wpdb->prefix}user_login_logs AS logs
@@ -276,9 +279,6 @@ class WSI_User_Logs {
 
 		$logs  = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
 
-		// Login Graph Data
-		$graph = self::get_login_graph_data( $where, $args );
-
 		include_once( __DIR__ . '/templates/login-logs.php' );
 	}
 
@@ -298,8 +298,7 @@ class WSI_User_Logs {
 				{$where}
 				AND logs.login_request_type = 1
 				GROUP BY wsi_login_date
-				ORDER BY login_date ASC
-				LIMIT %d, %d";
+				ORDER BY login_date ASC";
 
 		$graph_data = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
 		if ( empty( $graph_data ) ) {
