@@ -17,8 +17,21 @@
 	font-size: 14px;
 }
 
-@media screen and (max-width: 782px) {
-	#wsi_pagination .pagination-links {
+@media screen and (max-width: 1750px) {
+	#wsi_pagination {
 		margin-top: 10px;
+		width: 100%;
+		text-align: left;
 	}
+}
+
+#wsi_graph_container {
+	width: 100%;
+	padding: 10px 10px 0 0;
+}
+
+#wsi_graph_container .heading {
+	text-align: left;
+	font-size: 14px;
+	margin-bottom: 5px;
 }

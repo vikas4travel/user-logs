@@ -12,7 +12,6 @@ $search_from_date      = ! empty( $search_from_date ) ? $search_from_date : '';
 $search_to_date        = ! empty( $search_to_date ) ? $search_to_date : '';
 $placeholder_from_date = ! empty( $placeholder_from_date ) ? $placeholder_from_date : '';
 $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date : '';
-
 ?>
 
 <div class="wrap">
@@ -20,9 +19,8 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 	<hr class="wp-header-end">
 </div>
 
-<div class="wrap" id="poststuff">
+<div class="wrap">
 	<div class="tablenav top">
-
 		<div class="alignleft bulkactions" id="wsi_search_form">
 			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
 				<input type="hidden" name="page" value="wsi_user_logs">
@@ -77,16 +75,9 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 
 			</form>
 		</div>
-	</div>
 
-	<?php
-	include_once 'login-graph.php';
-	?>
-
-	<div class="tablenav top">
-		<div class="tablenav-pages" id="wsi_pagination">
+		<div class="tablenav-pages alignright" id="wsi_pagination">
 			<div class="pagination-links">
-				<span class="displaying-num">Total <?php echo intval( $total_rows ); ?> items</span>
 				<?php
 				$page_links = paginate_links(
 					array(
@@ -102,10 +93,19 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 				);
 				echo wp_kses_post( $page_links );
 				?>
+				<span class="displaying-num">Total <?php echo intval( $total_rows ); ?> items</span>
 			</div>
 		</div>
 	</div>
+</div>
 
+<div class="wrap">
+	<?php
+	include_once 'login-graph.php';
+	?>
+</div>
+
+<div class="wrap" id="poststuff">
 	<?php
 	$sort_by    = 'display_name';
 	$sort_order = 'desc';
@@ -178,6 +178,30 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 		?>
 		</tbody>
 	</table>
+</div>
+<div class="wrap">
+	<div class="tablenav top">
+		<div class="tablenav-pages alignright" id="wsi_pagination">
+			<div class="pagination-links">
+				<?php
+				$page_links = paginate_links(
+					array(
+						'base'               => add_query_arg( 'wsi_current_page', '%#%' ),
+						'format'             => '',
+						'prev_text'          => '&laquo;',
+						'next_text'          => '&raquo;',
+						'total'              => $num_of_pages,
+						'current'            => $current_page,
+						'before_page_number' => '<span class="tablenav-pages-navspan button" aria-hidden="true">',
+						'after_page_number'  => '</span>',
+					)
+				);
+				echo wp_kses_post( $page_links );
+				?>
+				<span class="displaying-num">Total <?php echo intval( $total_rows ); ?> items</span>
+			</div>
+		</div>
+	</div>
 </div>
 
 

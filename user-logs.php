@@ -196,6 +196,8 @@ class WSI_User_Logs {
 		$search_email        = ! empty( $_GET['wsi_search_email'] ) ? sanitize_text_field( $_GET['wsi_search_email'] ) : '';
 		$search_from_date    = ! empty( $_GET['wsi_search_from_date'] ) ? sanitize_text_field( $_GET['wsi_search_from_date'] ) : '';
 		$search_to_date      = ! empty( $_GET['wsi_search_to_date'] ) ? sanitize_text_field( $_GET['wsi_search_to_date'] ) : '';
+		$order_by            = ! empty( $_GET['wsi_order_by'] ) ? sanitize_text_field( $_GET['wsi_order_by'] ) : 'login_log_id';
+		$order               = ! empty( $_GET['wsi_order'] ) ? sanitize_text_field( $_GET['wsi_order'] ) : 'DESC';
 
 		// Setting a default argument for $wpdb->prepare();
 		$where = ' WHERE 1=%s ';
@@ -269,7 +271,7 @@ class WSI_User_Logs {
 				LEFT JOIN {$wpdb->prefix}users AS users 
 				ON ( logs.login_user_id = users.ID )
 				{$where}
-				ORDER BY login_log_id DESC 
+				ORDER BY {$order_by} {$order} 
 				LIMIT %d, %d";
 
 		$logs  = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
@@ -296,7 +298,7 @@ class WSI_User_Logs {
 				{$where}
 				AND logs.login_request_type = 1
 				GROUP BY wsi_login_date
-				ORDER BY wsi_login_date ASC 
+				ORDER BY login_date ASC
 				LIMIT %d, %d";
 
 		$graph_data = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );

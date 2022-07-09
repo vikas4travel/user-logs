@@ -20,5 +20,4 @@
 		$("#wsi_search_form form").submit();
 	})
 
-
 })( jQuery );
