@@ -101,7 +101,7 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 
 <div class="wrap">
 	<?php
-	include_once 'login-graph.php';
+	include_once 'graph.php';
 	?>
 </div>
 

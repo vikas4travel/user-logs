@@ -60,7 +60,7 @@ class WSI_User_Logs {
 		add_filter( 'wp_logout', [ $this, 'logout_filter' ], 10, 1 );
 		add_filter( 'user_register', [ $this, 'user_register_filter' ], 10, 1 );
 
-		//self::insert_test_data();
+		self::insert_test_data();
 	}
 
 	/**
@@ -92,7 +92,6 @@ class WSI_User_Logs {
 
 		delete_option( 'wsi_user_logs_welcome' );
 		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_logs`" );
-		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_registration_logs`" );
 	}
 
 	public function do_activation_redirect() {
@@ -119,9 +118,7 @@ class WSI_User_Logs {
 	public function create_admin_menu() {
 		add_menu_page( 'User Logs', 'User Logs', 'edit_posts', 'wsi-user-logs', '', 'dashicons-groups', 100 );
 		add_submenu_page( 'wsi-user-logs', 'User Login Logs', 'User Login Logs', 'manage_options', self::$plugin_slug, [ $this, 'login_logs' ] );
-		add_submenu_page( 'wsi-user-logs', 'Registration Logs', 'Registration Logs', 'manage_options', self::$plugin_slug, [ $this, 'registration_logs' ] );
-		add_submenu_page( 'wsi-user-logs', 'Activity Logs', 'Activity Logs', 'manage_options', self::$plugin_slug, [ $this, 'login_logs' ] );
-		add_submenu_page( 'wsi-user-logs', 'Settings', 'Settings', 'manage_options', self::$plugin_slug, [ $this, 'registration_logs' ] );
+		add_submenu_page( 'wsi-user-logs', 'Settings', 'Settings', 'manage_options', self::$plugin_slug, [ $this, 'settings' ] );
 		remove_submenu_page( 'wsi-user-logs', 'wsi-user-logs' );
 	}
 
@@ -270,7 +267,7 @@ class WSI_User_Logs {
 
 		$logs  = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
 
-		include_once( __DIR__ . '/templates/login-logs.php' );
+		include_once( __DIR__ . '/templates/logs.php' );
 	}
 
 	/**
@@ -355,12 +352,12 @@ class WSI_User_Logs {
 	/**
 	 * Plugin page in the admin area.
 	 */
-	public function registration_logs(){
+	public function settings(){
 
 		$current_page = ! empty( $POST['current-page'] ) ? intval( $POST['current-page'] ) : 1;
 
 		// Display the plugin page
-		include_once( __DIR__ . '/templates/registration-logs.php' );
+		include_once( __DIR__ . '/templates/settings.php' );
 	}
 
 	/**
@@ -480,7 +477,7 @@ class WSI_User_Logs {
 				$random_id     = $user_ids[ rand(0, $total_users) ];
 				$random_ip     = rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255) . '.' . rand(10, 255);
 				$random_date   = gmdate( 'Y-m-d H:i:s', strtotime( $i . ' days ago' ) );
-				$login_request = rand( 1, 2 );
+				$login_request = 0 === $j %2 ? rand( 1, 3 ) : rand( 1, 2 ); // making registrations less frequent then logins.
 
 				$sql = "INSERT INTO {$wpdb->prefix}user_logs 
 				SET login_user_id  = %d,
