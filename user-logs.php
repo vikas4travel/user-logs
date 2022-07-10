@@ -58,6 +58,7 @@ class WSI_User_Logs {
 		// Add Hooks
 		add_filter( 'wp_login', [ $this, 'login_filter' ], 10, 2 );
 		add_filter( 'wp_logout', [ $this, 'logout_filter' ], 10, 1 );
+		add_filter( 'user_register', [ $this, 'user_register_filter' ], 10, 1 );
 
 		//self::insert_test_data();
 	}
@@ -72,22 +73,12 @@ class WSI_User_Logs {
 		set_transient( 'wsi_user_logs_activation_redirect_transient', true, 30 );
 		update_option( 'wsi_user_logs_welcome', 0 );
 
-		$sql = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_login_logs` (
+		$sql = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_logs` (
 				`login_log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 				`login_user_id` bigint(20) UNSIGNED NOT NULL,
 				`login_user_ip` varchar(255) DEFAULT NULL,
 				`login_date` datetime NOT NULL,
 				PRIMARY KEY (`login_log_id`)
-				) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
-
-		$wpdb->query( $wpdb->prepare( $sql ) );
-
-		$sql = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_registration_logs` (
-				`registration_log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-				`registration_user_id` bigint(20) UNSIGNED NOT NULL,
-				`registration_user_ip` varchar(255) DEFAULT NULL,
-				`registration_date` datetime NOT NULL,
-				PRIMARY KEY (`registration_log_id`)
 				) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
 
 		$wpdb->query( $wpdb->prepare( $sql ) );
@@ -100,7 +91,7 @@ class WSI_User_Logs {
 		global $wpdb;
 
 		delete_option( 'wsi_user_logs_welcome' );
-		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_login_logs`" );
+		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_logs`" );
 		$wpdb->query( "DROP TABLE IF EXISTS `{$wpdb->prefix}user_registration_logs`" );
 	}
 
@@ -234,7 +225,7 @@ class WSI_User_Logs {
 			$args[] = sanitize_text_field( gmdate( 'Y-m-d', strtotime( $search_from_date ) ) );
 		} else {
 			// get first log date.
-			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id ASC LIMIT 0,1" );
+			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_logs ORDER BY login_log_id ASC LIMIT 0,1" );
 			$placeholder_from_date = ! empty( $results->login_date ) ? $results->login_date : '';
 		}
 
@@ -243,7 +234,7 @@ class WSI_User_Logs {
 			$args[] = sanitize_text_field( gmdate( 'Y-m-d', strtotime( $search_to_date ) ) );
 		} else {
 			// get last log date.
-			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_login_logs ORDER BY login_log_id DESC LIMIT 0,1" );
+			$results = $wpdb->get_row( "SELECT DATE(login_date) AS login_date FROM {$wpdb->prefix}user_logs ORDER BY login_log_id DESC LIMIT 0,1" );
 			$placeholder_to_date = ! empty( $results->login_date ) ? $results->login_date : '';
 		}
 
@@ -252,7 +243,7 @@ class WSI_User_Logs {
 
 		// Get rows.
 		$sql = "SELECT COUNT(*) AS total 
-				FROM {$wpdb->prefix}user_login_logs AS logs
+				FROM {$wpdb->prefix}user_logs AS logs
 				LEFT JOIN {$wpdb->prefix}users AS users 
 				ON ( logs.login_user_id = users.ID )
 				{$where}";
@@ -270,7 +261,7 @@ class WSI_User_Logs {
 		$args[] = $limit;
 
 		$sql = "SELECT logs.*, users.ID, users.user_login, users.display_name, users.user_email 
-				FROM {$wpdb->prefix}user_login_logs AS logs
+				FROM {$wpdb->prefix}user_logs AS logs
 				LEFT JOIN {$wpdb->prefix}users AS users 
 				ON ( logs.login_user_id = users.ID )
 				{$where}
@@ -291,24 +282,53 @@ class WSI_User_Logs {
 	public static function get_login_graph_data( $where, $args ) {
 		global $wpdb;
 
-		$sql = "SELECT COUNT(*) AS login_count, DATE(logs.login_date) AS wsi_login_date 
-				FROM {$wpdb->prefix}user_login_logs AS logs
+		// Get data points (Settings a hard limit for max 365 days to avoid query performance issues)
+		$sql = "SELECT DATE(logs.login_date) AS wsi_login_date 
+				FROM {$wpdb->prefix}user_logs AS logs
 				LEFT JOIN {$wpdb->prefix}users AS users 
 				ON ( logs.login_user_id = users.ID )
 				{$where}
-				AND logs.login_request_type = 1
 				GROUP BY wsi_login_date
-				ORDER BY login_date ASC";
+				ORDER BY login_date ASC
+				LIMIT 0, 365";
 
-		$graph_data = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
-		if ( empty( $graph_data ) ) {
+		$data_points = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		if ( empty( $data_points ) ) {
 			return [];
 		}
 
-		$dataset = array();
-		$ticks   = array();
+		// Get Login Requests
+		$sql = "SELECT COUNT(*) AS login_count, DATE(logs.login_date) AS wsi_login_date 
+				FROM {$wpdb->prefix}user_logs AS logs
+				LEFT JOIN {$wpdb->prefix}users AS users 
+				ON ( logs.login_user_id = users.ID )
+				{$where}
+				AND login_request_type = 1
+				GROUP BY wsi_login_date
+				ORDER BY login_date ASC
+				LIMIT 0, 365";
 
-		foreach ( (array) $graph_data as $data ) {
+		$login_requests = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		$login_requests = wp_list_pluck( (array) $login_requests, 'login_count', 'wsi_login_date' );
+
+		// Registration Requests
+		$sql = "SELECT COUNT(*) AS registration_count, DATE(logs.login_date) AS wsi_login_date 
+				FROM {$wpdb->prefix}user_logs AS logs
+				LEFT JOIN {$wpdb->prefix}users AS users 
+				ON ( logs.login_user_id = users.ID )
+				{$where}
+				AND login_request_type = 3
+				GROUP BY wsi_login_date
+				ORDER BY login_date ASC
+				LIMIT 0, 365";
+
+		$registration_requests = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		$registration_requests = wp_list_pluck( (array) $registration_requests, 'registration_count', 'wsi_login_date' );
+
+		$dataset = [];
+		$ticks   = [];
+
+		foreach ( (array) $data_points as $data ) {
 			$date  = strtotime( $data->wsi_login_date );
 			$year  = date( 'Y', $date );
 			$month = date( 'm', $date ) - 1;
@@ -316,7 +336,11 @@ class WSI_User_Logs {
 
 			// First element of a dataset is date
 			$ticks[]   = "new Date($year, $month, $day)";
-			$dataset[] = array( "new Date($year, $month, $day)", $data->login_count );
+
+			$login_count = ! empty( $login_requests[ $data->wsi_login_date ] ) ? $login_requests[ $data->wsi_login_date ] : 0;
+			$reg_count   = ! empty( $registration_requests[ $data->wsi_login_date ] ) ? $registration_requests[ $data->wsi_login_date ] : 0;
+
+			$dataset[] = [ "new Date($year, $month, $day)", $login_count, $reg_count ];
 		}
 
 		$ticks_json  = str_replace( '"', '', wp_json_encode( $ticks ) );
@@ -355,7 +379,7 @@ class WSI_User_Logs {
 	public function login_filter( $user_login, $user ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . "user_login_logs";
+		$table_name = $wpdb->prefix . "user_logs";
 
 		$ip = self::get_user_ip();
 
@@ -371,7 +395,7 @@ class WSI_User_Logs {
 	public function logout_filter( $user_id ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . "user_login_logs";
+		$table_name = $wpdb->prefix . "user_logs";
 
 		$ip = self::get_user_ip();
 
@@ -384,6 +408,21 @@ class WSI_User_Logs {
 		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
 	}
 
+	public function user_register_filter( $user_id ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . "user_logs";
+
+		$ip = self::get_user_ip();
+
+		$sql = "INSERT INTO $table_name 
+				SET login_user_id  = %d,
+				login_user_ip      = %s,
+				login_request_type = 3,
+				login_date         = %s";
+
+		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
+	}
 
 	/**
 	 * Get user' IP
@@ -413,7 +452,7 @@ class WSI_User_Logs {
 			return;
 		}
 
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}user_login_logs WHERE login_log_id = %d", $log_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}user_logs WHERE login_log_id = %d", $log_id ) );
 
 		echo '<div class="notice notice-success is-dismissible"><p>Record deleted successfully!</p></div>';
 	}
@@ -443,7 +482,7 @@ class WSI_User_Logs {
 				$random_date   = gmdate( 'Y-m-d H:i:s', strtotime( $i . ' days ago' ) );
 				$login_request = rand( 1, 2 );
 
-				$sql = "INSERT INTO {$wpdb->prefix}user_login_logs 
+				$sql = "INSERT INTO {$wpdb->prefix}user_logs 
 				SET login_user_id  = %d,
 				login_user_ip      = %s,
 				login_request_type = %d,

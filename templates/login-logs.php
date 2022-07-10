@@ -143,9 +143,22 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 
 		foreach ( $logs as $log ) {
 
-			$request_type = 1 === intval( $log->login_request_type ) ? 'Login' : 'Logout';
 			$edit_link    = admin_url( 'user-edit.php?user_id=' . $log->login_user_id );
 			$delete_link  = admin_url( 'admin.php?page=wsi_user_logs&delete_user_id=' . $log->login_log_id );
+
+			switch ( $log->login_request_type ) {
+				case 1:
+					$request_type = 'Login';
+					break;
+				case 2:
+					$request_type = 'Logout';
+					break;
+				case 3:
+					$request_type = 'Registration';
+					break;
+				default :
+					$request_type = '--NA--';
+			}
 
 			?>
 			<tr>
