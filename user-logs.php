@@ -56,10 +56,10 @@ class WSI_User_Logs {
 		}
 
 		// Add Hooks
-		add_filter( 'wp_login', [ $this, 'login_filter' ], 10, 2 );
-		add_filter( 'wp_logout', [ $this, 'logout_filter' ], 10, 1 );
-		add_filter( 'user_register', [ $this, 'user_register_filter' ], 10, 1 );
-
+		add_filter( 'wp_login', [ $this, 'login_action' ], 10, 2 );
+		add_filter( 'wp_logout', [ $this, 'logout_action' ], 10, 1 );
+		add_filter( 'user_register', [ $this, 'user_registered_action' ], 10, 1 );
+		add_filter( 'comment_post', [ $this, 'comment_posted_action' ], 10, 2 );
 		//self::insert_test_data();
 	}
 
@@ -369,52 +369,112 @@ class WSI_User_Logs {
 		return false;
 	}
 
-	public function login_filter( $user_login, $user ) {
-		global $wpdb;
+	/**
+	 * User Login
+	 * @param $user_login
+	 * @param $user
+	 */
+	public function login_action( $user_login, $user ) {
+		$args = [
+			'user_id'      => $user->ID,
+			'user_login'   => $user_login,
+			'user_email'   => $user->user_email,
+			'display_name' => $user->display_name,
+			'request_type' => 1,
+		];
 
-		$table_name = $wpdb->prefix . "user_logs";
-
-		$ip = self::get_user_ip();
-
-		$sql = "INSERT INTO $table_name 
-				SET log_user_id  = %d,
-				log_user_ip      = %s,
-				log_request_type = 1,
-				log_date         = %s";
-
-		$wpdb->query( $wpdb->prepare( $sql, [ $user->ID , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
+		self::insert_log( $args );
 	}
 
-	public function logout_filter( $user_id ) {
-		global $wpdb;
+	/**
+	 * User logout
+	 * @param $user_id
+	 */
+	public function logout_action( $user_id ) {
+		$user = get_userdata( $user_id );
 
-		$table_name = $wpdb->prefix . "user_logs";
+		$args = [
+			'user_id'      => $user->ID,
+			'user_login'   => $user->user_login,
+			'user_email'   => $user->user_email,
+			'display_name' => $user->display_name,
+			'request_type' => 2,
+		];
 
-		$ip = self::get_user_ip();
-
-		$sql = "INSERT INTO $table_name 
-				SET log_user_id  = %d,
-				log_user_ip      = %s,
-				log_request_type = 2,
-				log_date         = %s";
-
-		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
+		self::insert_log( $args );
 	}
 
-	public function user_register_filter( $user_id ) {
+	/**
+	 * User Registration
+	 * @param $user_id
+	 */
+	public function user_registered_action( $user_id ) {
+		$user = get_userdata( $user_id );
+
+		$args = [
+			'user_id'      => $user->ID,
+			'user_login'   => $user->user_login,
+			'user_email'   => $user->user_email,
+			'display_name' => $user->display_name,
+			'request_type' => 3,
+		];
+
+		self::insert_log( $args );
+	}
+
+	/**
+	 * Comment posted
+	 * @param $comment_id
+	 */
+	public function comment_posted_action( $comment_id ) {
+		$comment = get_comment( $comment_id );
+
+		if ( empty( $comment ) ) {
+			return;
+		}
+
+		echo "<pre>";
+		print_r( $comment );
+		echo "</pre>";
+		exit;
+		$author = $comment->comment_author;
+
+		//self::insert_log( $user_id, 4, $comment_id );
+	}
+
+	public static function insert_log( $args ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . "user_logs";
+		$user_id      = ! empty( $args['user_id'] ) ? $args['user_id'] : 0;
+		$user_login   = ! empty( $args['user_login'] ) ? $args['user_login'] : '';
+		$user_email   = ! empty( $args['user_email'] ) ? $args['user_email'] : '';
+		$display_name = ! empty( $args['display_name'] ) ? $args['display_name'] : '';
+		$comment_id   = ! empty( $args['comment_id'] ) ? $args['comment_id'] : 0;
+		$request_type = ! empty( $args['request_type'] ) ? $args['request_type'] : 0;
+		$ip           = self::get_user_ip();
 
-		$ip = self::get_user_ip();
-
-		$sql = "INSERT INTO $table_name 
+		$sql = "INSERT INTO {$wpdb->prefix}user_logs 
 				SET log_user_id  = %d,
+				log_user_login   = %s,
+				log_email        = %s,
+				log_display_name = %s,
+				log_comment_id   = %d,
 				log_user_ip      = %s,
-				log_request_type = 3,
+				log_request_type = %d,
 				log_date         = %s";
 
-		$wpdb->query( $wpdb->prepare( $sql, [ $user_id , $ip, gmdate( 'Y-m-d H:i:s' ) ] ) );
+		$args = [
+			$user_id,
+			$user_login,
+			$email,
+			$display_name,
+			$comment_id,
+			$ip,
+			$request_type,
+			gmdate( 'Y-m-d H:i:s' )
+		];
+
+		$wpdb->query( $wpdb->prepare( $sql, $args ) );
 	}
 
 	/**
