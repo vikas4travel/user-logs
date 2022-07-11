@@ -24,8 +24,9 @@ if ( empty( $graph['data_json'] ) || empty( $graph['ticks_json'] ) ) {
 			var data = new google.visualization.DataTable();
 
 			data.addColumn('date', 'Date');
-			data.addColumn('number', "Users Login" );
-			data.addColumn('number', "Users Registrations" );
+			data.addColumn('number', "Login" );
+			data.addColumn('number', "Logout" );
+			data.addColumn('number', "Registrations" );
 
 			data.addRows(<?php echo $graph['data_json']; ?>)
 

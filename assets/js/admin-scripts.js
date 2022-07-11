@@ -8,6 +8,7 @@
 		$("#wsi_search_email").val('');
 		$("#wsi_search_from_date").val('');
 		$("#wsi_search_to_date").val('');
+		$("#wsi_search_request_type").val('0');
 	})
 
 	$("#wsi_search_from_date").datepicker();

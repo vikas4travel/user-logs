@@ -12,6 +12,7 @@ $search_from_date      = ! empty( $search_from_date ) ? $search_from_date : '';
 $search_to_date        = ! empty( $search_to_date ) ? $search_to_date : '';
 $placeholder_from_date = ! empty( $placeholder_from_date ) ? $placeholder_from_date : '';
 $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date : '';
+$search_request_type   = ! empty( $search_request_type ) ? $search_request_type : '';
 ?>
 
 <div class="wrap">
@@ -36,13 +37,13 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 				<input type="text"
 					   name="wsi_search_username"
 					   id="wsi_search_username"
-					   placeholder="User Login Name"
+					   placeholder="Login Name"
 					   class="wsi_input"
 					   value="<?php echo esc_attr( $search_username ); ?>" />
 				<input type="text"
 					   name="wsi_search_display_name"
 					   id="wsi_search_display_name"
-					   placeholder="User Display Name"
+					   placeholder="Display Name"
 					   class="wsi_input"
 					   value="<?php echo esc_attr( $search_display_name ); ?>" />
 				<input type="text"
@@ -70,6 +71,17 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 					   placeholder="To <?php echo esc_attr( $placeholder_to_date ); ?>"
 					   class="wsi_input"
 					   value="<?php echo esc_attr( $search_to_date ); ?>" />
+
+				<select	name="wsi_search_request_type"
+						id="wsi_search_request_type"
+						class="wsi_input">
+
+					<option value="0" <?php selected( $search_request_type, '' ); ?>>Request Type</option>
+					<option value="1" <?php selected( $search_request_type, '1' ); ?>>Login</option>
+					<option value="2" <?php selected( $search_request_type, '2' ); ?>>Logout</option>
+					<option value="3" <?php selected( $search_request_type, '3' ); ?>>Registration</option>
+				</select>
+
 				<input type="submit" value="Search" class="button button-primary" id="wsi-submit-button">
 				<input type="button" value="Clear" class="button wsi-button" id="wsi-clear-button">
 
@@ -115,13 +127,13 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 		<thead>
 		<tr>
 			<?php
-			self::print_column('User ID', 'login_user_id');
+			self::print_column('User ID', 'log_user_id');
 			self::print_column('Username (Login Name)', 'user_login');
 			self::print_column('Display Name', 'display_name');
 			self::print_column('Email', 'user_email');
-			self::print_column('IP Address', 'login_user_ip');
-			self::print_column('Request Type', 'login_request_type');
-			self::print_column('Login Date', 'login_date');
+			self::print_column('IP Address', 'log_user_ip');
+			self::print_column('Request Type', 'log_request_type');
+			self::print_column('Login Date', 'log_date');
 			?>
 			<th class="manage-column column-title">
 				Delete Logs
@@ -143,10 +155,10 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 
 		foreach ( $logs as $log ) {
 
-			$edit_link    = admin_url( 'user-edit.php?user_id=' . $log->login_user_id );
-			$delete_link  = admin_url( 'admin.php?page=wsi_user_logs&delete_user_id=' . $log->login_log_id );
+			$edit_link    = admin_url( 'user-edit.php?user_id=' . $log->log_user_id );
+			$delete_link  = admin_url( 'admin.php?page=wsi_user_logs&delete_user_id=' . $log->log_id );
 
-			switch ( $log->login_request_type ) {
+			switch ( $log->log_request_type ) {
 				case 1:
 					$request_type = 'Login';
 					break;
@@ -162,7 +174,7 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 
 			?>
 			<tr>
-				<td class="title column-title"><?php echo esc_html( $log->login_user_id ); ?></td>
+				<td class="title column-title"><?php echo esc_html( $log->log_user_id ); ?></td>
 				<td class="title column-title">
 					<a href="<?php echo esc_url( $edit_link ); ?>">
 						<?php
@@ -176,9 +188,9 @@ $placeholder_to_date   = ! empty( $placeholder_to_date ) ? $placeholder_to_date 
 				</td>
 				<td class="title column-title"><?php echo esc_html( $log->display_name ); ?></td>
 				<td class="title column-title"><?php echo esc_html( $log->user_email ); ?></td>
-				<td class="title column-title"><?php echo esc_html( $log->login_user_ip ); ?></td>
+				<td class="title column-title"><?php echo esc_html( $log->log_user_ip ); ?></td>
 				<td class="title column-title"><?php echo esc_html( $request_type ); ?></td>
-				<td class="title column-title"><?php echo esc_html( gmdate( 'd M y, h:i a', strtotime( $log->login_date ) ) ); ?></td>
+				<td class="title column-title"><?php echo esc_html( gmdate( 'd M y, h:i a', strtotime( $log->log_date ) ) ); ?></td>
 				<td class="title column-title">
 					<a href="<?php echo esc_url( $delete_link ); ?>">
 						Delete
