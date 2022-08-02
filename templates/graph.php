@@ -27,6 +27,7 @@ if ( empty( $graph['data_json'] ) || empty( $graph['ticks_json'] ) ) {
 			data.addColumn('number', "Login" );
 			data.addColumn('number', "Logout" );
 			data.addColumn('number', "Registrations" );
+			data.addColumn('number', "Comments" );
 
 			data.addRows(<?php echo $graph['data_json']; ?>)
 

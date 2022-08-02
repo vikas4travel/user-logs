@@ -76,7 +76,12 @@ class WSI_User_Logs {
 		$sql = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_logs` (
 				`log_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 				`log_user_id` bigint(20) UNSIGNED NOT NULL,
-				`log_user_ip` varchar(255) DEFAULT NULL,
+				`log_user_login` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+				`log_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+				`log_display_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+				`log_comment_id` int(11) DEFAULT NULL,
+				`log_user_ip` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+				`log_request_type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=login, 2=logout',
 				`log_date` datetime NOT NULL,
 				PRIMARY KEY (`log_id`)
 				) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
@@ -198,12 +203,12 @@ class WSI_User_Logs {
 		}
 
 		if ( ! empty( $search_username ) ) {
-			$where .= " AND user_login LIKE '%%%s%%'";
+			$where .= " AND log_user_login LIKE '%%%s%%'";
 			$args[] = sanitize_text_field( $search_username );
 		}
 
 		if ( ! empty( $search_display_name ) ) {
-			$where .= " AND display_name LIKE '%%%s%%'";
+			$where .= " AND log_display_name LIKE '%%%s%%'";
 			$args[] = sanitize_text_field( $search_display_name );
 		}
 
@@ -213,7 +218,7 @@ class WSI_User_Logs {
 		}
 
 		if ( ! empty( $search_email ) ) {
-			$where .= " AND user_email LIKE '%%%s%%'";
+			$where .= " AND log_email LIKE '%%%s%%'";
 			$args[] = sanitize_text_field( $search_email );
 		}
 
@@ -245,11 +250,7 @@ class WSI_User_Logs {
 		$graph = self::get_graph_data( $where, $args );
 
 		// Get rows.
-		$sql = "SELECT COUNT(*) AS total 
-				FROM {$wpdb->prefix}user_logs AS logs
-				LEFT JOIN {$wpdb->prefix}users AS users 
-				ON ( logs.log_user_id = users.ID )
-				{$where}";
+		$sql = "SELECT COUNT(*) AS total FROM {$wpdb->prefix}user_logs {$where}";
 
 		$results = $wpdb->get_row( $wpdb->prepare( $sql, $args ) );
 
@@ -263,10 +264,7 @@ class WSI_User_Logs {
 		$args[] = $offset;
 		$args[] = $limit;
 
-		$sql = "SELECT logs.*, users.ID, users.user_login, users.display_name, users.user_email 
-				FROM {$wpdb->prefix}user_logs AS logs
-				LEFT JOIN {$wpdb->prefix}users AS users 
-				ON ( logs.log_user_id = users.ID )
+		$sql = "SELECT * FROM {$wpdb->prefix}user_logs
 				{$where}
 				ORDER BY {$order_by} {$order} 
 				LIMIT %d, %d";
@@ -286,7 +284,7 @@ class WSI_User_Logs {
 		global $wpdb;
 
 		$graph_data = [];
-		for( $request_type = 0; $request_type <= 3; $request_type ++ ) {
+		for( $request_type = 0; $request_type <= 4; $request_type ++ ) {
 
 			$request_type_sql = '';
 			if ( $request_type > 0 ) {
@@ -294,10 +292,8 @@ class WSI_User_Logs {
 			}
 
 			// Fetching max 365 data points for performance reasons.
-			$sql = "SELECT COUNT(*) AS total_count, DATE(logs.log_date) AS wsi_log_date 
-					FROM {$wpdb->prefix}user_logs AS logs
-					LEFT JOIN {$wpdb->prefix}users AS users 
-					ON ( logs.log_user_id = users.ID )
+			$sql = "SELECT COUNT(*) AS total_count, DATE(log_date) AS wsi_log_date 
+					FROM {$wpdb->prefix}user_logs
 					{$where}
 					{$request_type_sql}
 					GROUP BY wsi_log_date
@@ -329,11 +325,12 @@ class WSI_User_Logs {
 			// First element of a dataset is date
 			$ticks[]   = "new Date($year, $month, $day)";
 
-			$login_count  = ! empty( $graph_data[1][ $date ] ) ? $graph_data[1][ $date ] : 0;
-			$logout_count = ! empty( $graph_data[2][ $date ] ) ? $graph_data[2][ $date ] : 0;
-			$reg_count    = ! empty( $graph_data[3][ $date ] ) ? $graph_data[3][ $date ] : 0;
+			$login_count    = ! empty( $graph_data[1][ $date ] ) ? $graph_data[1][ $date ] : 0;
+			$logout_count   = ! empty( $graph_data[2][ $date ] ) ? $graph_data[2][ $date ] : 0;
+			$reg_count      = ! empty( $graph_data[3][ $date ] ) ? $graph_data[3][ $date ] : 0;
+			$comments_count = ! empty( $graph_data[4][ $date ] ) ? $graph_data[4][ $date ] : 0;
 
-			$dataset[] = [ "new Date($year, $month, $day)", $login_count, $logout_count, $reg_count ];
+			$dataset[] = [ "new Date($year, $month, $day)", $login_count, $logout_count, $reg_count, $comments_count ];
 		}
 
 		$ticks_json  = str_replace( '"', '', wp_json_encode( $ticks ) );
@@ -433,13 +430,30 @@ class WSI_User_Logs {
 			return;
 		}
 
-		echo "<pre>";
-		print_r( $comment );
-		echo "</pre>";
-		exit;
-		$author = $comment->comment_author;
+		if ( ! empty( $comment->user_id ) ) {
 
-		//self::insert_log( $user_id, 4, $comment_id );
+			$user = get_userdata( $comment->user_id );
+
+			$args = [
+				'user_id'      => $user->ID,
+				'user_login'   => $user->user_login,
+				'user_email'   => $user->user_email,
+				'display_name' => $user->display_name,
+				'comment_id'   => $comment_id,
+				'request_type' => 4,
+			];
+		} else {
+			$args = [
+				'user_id'      => 0,
+				'user_login'   => '',
+				'user_email'   => $comment->comment_author_email,
+				'display_name' => $comment->comment_author,
+				'comment_id'   => $comment_id,
+				'request_type' => 4,
+			];
+		}
+
+		self::insert_log( $args );
 	}
 
 	public static function insert_log( $args ) {
@@ -466,7 +480,7 @@ class WSI_User_Logs {
 		$args = [
 			$user_id,
 			$user_login,
-			$email,
+			$user_email,
 			$display_name,
 			$comment_id,
 			$ip,

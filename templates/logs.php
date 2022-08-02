@@ -80,6 +80,7 @@ $search_request_type   = ! empty( $search_request_type ) ? $search_request_type 
 					<option value="1" <?php selected( $search_request_type, '1' ); ?>>Login</option>
 					<option value="2" <?php selected( $search_request_type, '2' ); ?>>Logout</option>
 					<option value="3" <?php selected( $search_request_type, '3' ); ?>>Registration</option>
+					<option value="4" <?php selected( $search_request_type, '4' ); ?>>Comment</option>
 				</select>
 
 				<input type="submit" value="Search" class="button button-primary" id="wsi-submit-button">
@@ -136,7 +137,7 @@ $search_request_type   = ! empty( $search_request_type ) ? $search_request_type 
 			self::print_column('Login Date', 'log_date');
 			?>
 			<th class="manage-column column-title">
-				Delete Logs
+				Action
 			</th>
 		</tr>
 		</thead>
@@ -166,7 +167,10 @@ $search_request_type   = ! empty( $search_request_type ) ? $search_request_type 
 					$request_type = 'Logout';
 					break;
 				case 3:
-					$request_type = 'Registration';
+					$request_type = 'User Registered';
+					break;
+				case 4:
+					$request_type = 'Comment Added';
 					break;
 				default :
 					$request_type = '--NA--';
@@ -178,23 +182,23 @@ $search_request_type   = ! empty( $search_request_type ) ? $search_request_type 
 				<td class="title column-title">
 					<a href="<?php echo esc_url( $edit_link ); ?>">
 						<?php
-						if ( empty( $log->user_login ) ) {
+						if ( empty( $log->log_user_login ) ) {
 							echo '<i title="User not found, may be deleted.">--NA--</i>';
 						} else {
-							echo esc_html( $log->user_login );
+							echo esc_html( $log->log_user_login );
 						}
 						?>
 					</a>
 				</td>
-				<td class="title column-title"><?php echo esc_html( $log->display_name ); ?></td>
-				<td class="title column-title"><?php echo esc_html( $log->user_email ); ?></td>
+				<td class="title column-title"><?php echo esc_html( $log->log_display_name ); ?></td>
+				<td class="title column-title"><?php echo esc_html( $log->log_email ); ?></td>
 				<td class="title column-title"><?php echo esc_html( $log->log_user_ip ); ?></td>
 				<td class="title column-title"><?php echo esc_html( $request_type ); ?></td>
 				<td class="title column-title"><?php echo esc_html( gmdate( 'd M y, h:i a', strtotime( $log->log_date ) ) ); ?></td>
 				<td class="title column-title">
-					<a href="<?php echo esc_url( $delete_link ); ?>">
-						Delete
-					</a>
+					<a href="<?php echo esc_url( $view_link ); ?>">View</a>
+					|
+					<a href="<?php echo esc_url( $delete_link ); ?>">Delete</a>
 				</td>
 
 			</tr>
